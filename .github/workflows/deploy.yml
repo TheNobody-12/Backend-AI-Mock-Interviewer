@@ -21,7 +21,6 @@ jobs:
         uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: interview-ai-84058
-          install_components: docker
 
       - name: Build & Push Docker image
         run: |
