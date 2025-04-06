@@ -1,4 +1,4 @@
-name: Deploy to Cloud Run
+name: Deploy to Google Cloud Run
 
 on:
   push:
@@ -8,31 +8,34 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Authenticate to Google Cloud
+      - name: Set up Google Cloud authentication
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}  # Ensure your GCP service account key is stored as a GitHub secret
 
-      - name: Set up gcloud
+      - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
-          project_id: interview-ai-84058
+          project_id: interview-ai-84058  # Replace with your GCP project ID
 
-      - name: Build & Push Docker image
-        run: |
-          gcloud auth configure-docker
-          docker build -t gcr.io/interview-ai-84058/flask-app .
-          docker push gcr.io/interview-ai-84058/flask-app
+      - name: Configure Docker to use gcloud
+        run: gcloud auth configure-docker
 
-      - name: Deploy to Cloud Run
+      - name: Build and push Docker images for Flask app
         run: |
-          gcloud run deploy flask-app \
-            --image gcr.io/interview-ai-84058/flask-app \
+          docker-compose -f docker-compose.yml build -app
+          docker-compose -f docker-compose.yml push backend-aimi
+
+      - name: Deploy to Google Cloud Run
+        run: |
+          gcloud run deploy backend-aimi \
+            --image gcr.io/interview-ai-84058/backend-aimi:latest \
             --platform managed \
             --region us-central1 \
-            --allow-unauthenticated \
-            --set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/app/config/key.json,GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }},SECRET_KEY=${{ secrets.SECRET_KEY }},SQLALCHEMY_DATABASE_URI=sqlite:///app.db,KAFKA_BROKER=localhost:9092,KAFKA_TOPIC_AUDIO=audio_stream,KAFKA_TOPIC_VIDEO=video_stream,KAFKA_TOPIC_TRANSCRIPT=transcript_results,KAFKA_TOPIC_EMOTION=emotion_results"
+            --allow-unauthenticated \flask
+            --set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/app/config/key.json,GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }},SECRET_KEY=${{ secrets.SECRET_KEY }},SQLALCHEMY_DATABASE_URI=sqlite:///app.db,KAFKA_BROKER=kafka:29092,KAFKA_TOPIC_AUDIO=audio_stream,KAFKA_TOPIC_VIDEO=video_stream,KAFKA_TOPIC_TRANSCRIPT=transcript_results,KAFKA_TOPIC_EMOTION=emotion_results"
